@@ -43,10 +43,10 @@ class ServerError extends ExtendableError {
 	}
 }
 
-class DiscoverError extends ExtendableError {
+class AuthenticationError extends ExtendableError {
 	constructor(message) {
-		super('Verification error: ' + message)
-		this.data = 'DiscoverError'
+		super('Authentication error: ' + message)
+		this.data = 'AuthenticationError'
 	}
 }
 
@@ -132,14 +132,19 @@ export default class Server {
 						tag
 					}
 				}
-				console.info(Common.now(), `Connection ${system ? JSON.stringify(system) : 'système inconnu ' + tag}`)
-				callback(system, null)
+				if (system) {
+					console.info(Common.now(), `Connection ${JSON.stringify(system)}`)	
+					callback(system, null)
+				} else {
+					console.warn(Common.now(), `Connection système inconnu ${tag}`)
+					callback(null, new AuthenticationError('Système non authorisé'))					
+				}
 			})
 			.catch((error) => {
 				console.error(`${Common.now()} La découverte du système a échoué`, error)
 				callback(null, new ServerError(error.message))
 			})
-	}
+	} 
 
 	setReady(socket) {
 		const randomUser = {
