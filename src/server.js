@@ -19,8 +19,6 @@ const DEFAULT_PRIVATE_SSL_PORT = 3443
 const DEFAULT_HOST = 'http://mprj.cloudapp.net'
 const DEFAULT_SSL_HOST = 'https://mprj.cloudapp.net'
 
-const storageSystems = ['f1a33ec7-b0a5-4b65-be40-d2a93fd5b133']
-
 export default class Server {
 
 	constructor(secure = true) {
@@ -45,7 +43,7 @@ export default class Server {
 		
 		this.socketServer.sockets.on('connection', (socket) => {
 			this.setReady(socket)
-			this.registerHandlers(socket)
+			this.registerEvents(socket)
 		})
 
 		this.socketServer.use((socket, next) => {
@@ -62,18 +60,17 @@ export default class Server {
 							authenticatingTag: tag
 						}
 					}
-					return next()
+					return next() 
 				}
 			})
 		})
 
 	}
 
-	registerHandlers(socket) {
-		this.handleEvent(Events.CHAT, socket)
-		this.handleEvent(Events.EXECUTE, socket)
-		this.handleEvent(Events.RESULT, socket)
-		this.handleEvent(Events.CONFIGURED, socket)
+	registerEvents(socket) {		
+		//this.registerPassThroughEvent(Events.CHAT, socket)
+		this.registerStorageEvent(Events.RESULT, socket)
+		this.registerRepositoryEvent(Events.CONFIGURED, socket)
 	}
 
 	setReady(socket) {
@@ -94,7 +91,7 @@ export default class Server {
 		this.socketServer.sockets.in(tag).emit(Events.READY, {
 			tag,
 			nickname
-		})
+		}) 
 	}
 
 	listen() {
@@ -102,21 +99,35 @@ export default class Server {
 			console.info(Common.now(), `Listening on *:${this.publicPort} --> *:${this.privatePort}`)
 		})
 	}
-
-	handleEvent(event, socket) {
+	
+	registerRepositoryEvent(event, socket) {
+		socket.on(event, (message) => {
+			const json = Common.toJson(message)
+			console.info(`${Common.now()} ${event}`, json)			
+			if (event === Events.CONFIGURED) {
+				AgentRepository.update(json.from, json.nickname, json.email)
+				return			
+			}			
+		})
+	}
+	 
+	registerPassThroughEvent(event, socket) {
 		socket.on(event, (message) => {
 			const json = Common.toJson(message)
 			console.info(`${Common.now()} ${event}`, json)
 			if (json.to) {
 				this.socketServer.sockets.in(json.to).emit(event, message)
 				return
-			} else {
-				if (event === Events.CONFIGURED) {
-					AgentRepository.update(json.from, json.nickname, json.email)
-					return
-				}
 			}
 			console.error(`${Common.now()} ${json.from} doit spécifier un destinataire`)
+		})
+	}
+	
+	registerStorageEvent(event, socket) {
+		socket.on(event, (message) => {
+			const json = Common.toJson(message)
+			console.info(`${Common.now()} Storage event ${event}`, json)			
+			this.socketServer.sockets.in(AgentRepository.STORAGE_AGENT_TAG).emit(event, message)			
 		})
 	}
 

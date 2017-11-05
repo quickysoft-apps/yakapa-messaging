@@ -2,7 +2,7 @@ import { Lokka } from 'lokka'
 import { Transport } from 'lokka-transport-http'
 import Common from './common'
 
-const storageSystems = ['f1a33ec7-b0a5-4b65-be40-d2a93fd5b133']
+const STORAGE_AGENT_TAG = 'f1a33ec7-b0a5-4b65-be40-d2a93fd5b133'
 
 const client = new Lokka({
 	transport: new Transport('https://api.graph.cool/simple/v1/cixri1w220iji0121r8lr0n69')
@@ -89,7 +89,7 @@ const findByTag = (tag, callback) => {
 					tag
 				}
 			}
-			if (storageSystems.indexOf(tag) !== -1) {
+			if (tag === STORAGE_AGENT_TAG) {
 				system = {
 					nickname: 'Yakapa Storage',
 					email: 'n/a',
@@ -143,6 +143,7 @@ const update = (tag, nickname, email) => {
 
 
 export default {
+	STORAGE_AGENT_TAG,
 	findByTag,
 	update
 }
