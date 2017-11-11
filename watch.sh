@@ -1,4 +1,4 @@
 #!/bin/sh
 
 cd /home/azemour/yakapa/yakapa-messaging/
-npm run rebuild
+npm run build
