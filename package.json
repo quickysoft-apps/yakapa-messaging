@@ -8,7 +8,7 @@
   },
   "scripts": {
     "start": "node lib/app",
-    "build": "node_modules/.bin/babel src --presets es2015 --out-dir lib"
+    "build": "node_modules/.bin/babel src --presets es2015 --out-dir lib -w"
   },
   "dependencies": {
     "express": "^4.15.0",
