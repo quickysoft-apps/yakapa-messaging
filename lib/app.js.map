@@ -1,1 +1,0 @@
-{"version":3,"sources":["../src/app.js"],"names":["server","listen"],"mappings":";;AAAA;;;;;;AAEA,IAAMA,SAAS,qBAAW,IAAX,CAAf;AACAA,OAAOC,MAAP","file":"app.js","sourcesContent":["import Server from './server'\n\nconst server = new Server(true)\nserver.listen()\n"]}

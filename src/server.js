@@ -6,6 +6,7 @@ import http from 'http'
 import io from 'socket.io'
 import scn from 'string-capitalize-name'
 import faker from 'faker'
+import * as LZString from 'lz-string'
 
 import Common from './common'
 import AgentRepository from './agentRepository'
@@ -68,9 +69,9 @@ export default class Server {
 	}
 
 	registerEvents(socket) {		
-		//this.registerPassThroughEvent(Events.CHAT, socket)
+		this.registerPassThroughEvent(Events.RESULT_STORED, socket)
 		this.registerStorageEvent(Events.RESULT, socket)
-		this.registerRepositoryEvent(Events.CONFIGURED, socket)
+		this.registerRepositoryEvent(Events.CONFIGURED, socket)		
 	}
 
 	setReady(socket) {
@@ -118,6 +119,15 @@ export default class Server {
 			if (json.to) {
 				this.socketServer.sockets.in(json.to).emit(event, message)
 				return
+			} else {
+				//Déterminer l'ensemble des user agent visés par ce from
+				const decompressed = Common.toJson(LZString.decompressFromUTF16(json.message))
+				if (!decompressed.from) {
+					console.error(`${Common.now()} ${json.from} doit spécifier un destinataire`)	
+					return
+				}
+				const from = decompressed.from
+				return
 			}
 			console.error(`${Common.now()} ${json.from} doit spécifier un destinataire`)
 		})
@@ -126,7 +136,7 @@ export default class Server {
 	registerStorageEvent(event, socket) {
 		socket.on(event, (message) => {
 			const json = Common.toJson(message)
-			console.info(`${Common.now()} Storage event ${event}`, json)			
+			console.info(`${Common.now()} ${event}`, json)			
 			this.socketServer.sockets.in(AgentRepository.STORAGE_AGENT_TAG).emit(event, message)			
 		})
 	}

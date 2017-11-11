@@ -3,6 +3,7 @@ import { Transport } from 'lokka-transport-http'
 import Common from './common'
 
 const STORAGE_AGENT_TAG = 'f1a33ec7-b0a5-4b65-be40-d2a93fd5b133'
+const STREAMING_AGENT_TAG = 'ea0d3ee6-ad65-47f4-9ff0-d25d7a18ed97'
 
 const client = new Lokka({
 	transport: new Transport('https://api.graph.cool/simple/v1/cixri1w220iji0121r8lr0n69')
@@ -96,6 +97,13 @@ const findByTag = (tag, callback) => {
 					tag
 				}
 			}
+			if (tag === STREAMING_AGENT_TAG) {
+				system = {
+					nickname: 'Yakapa Streaming',
+					email: 'n/a',
+					tag
+				}
+			}
 			if (system) {
 				console.info(Common.now(), `Connection ${JSON.stringify(system)}`)
 				callback(system, null)
@@ -144,6 +152,7 @@ const update = (tag, nickname, email) => {
 
 export default {
 	STORAGE_AGENT_TAG,
+	STREAMING_AGENT_TAG,
 	findByTag,
 	update
 }
