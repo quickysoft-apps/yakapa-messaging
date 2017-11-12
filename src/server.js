@@ -7,8 +7,8 @@ import io from 'socket.io'
 import scn from 'string-capitalize-name'
 import faker from 'faker'
 import * as LZString from 'lz-string'
+import * as Common from 'yakapa-common'
 
-import Common from './common'
 import AgentRepository from './agentRepository'
 import Events from './events'
 import Errors from './errors'
@@ -41,7 +41,7 @@ export default class Server {
 		this.expressApp.get('*', (req, res) => {
 			res.sendFile(path.resolve(__dirname, '..', 'static', 'index.html'))
 		})
-		
+
 		this.socketServer.sockets.on('connection', (socket) => {
 			this.setReady(socket)
 			this.registerEvents(socket)
@@ -52,7 +52,7 @@ export default class Server {
 
 			AgentRepository.findByTag(tag, (res, error) => {
 				if (error) {
-					console.error(`${Common.now()} ${error.message}`)
+					Common.logger.error(error.message)
 					next(error)
 				} else {
 					socket.yakapa = {
@@ -61,17 +61,17 @@ export default class Server {
 							authenticatingTag: tag
 						}
 					}
-					return next() 
+					return next()
 				}
 			})
 		})
 
 	}
 
-	registerEvents(socket) {		
+	registerEvents(socket) {
 		this.registerPassThroughEvent(Events.RESULT_STORED, socket)
 		this.registerStorageEvent(Events.RESULT, socket)
-		this.registerRepositoryEvent(Events.CONFIGURED, socket)		
+		this.registerRepositoryEvent(Events.CONFIGURED, socket)
 	}
 
 	setReady(socket) {
@@ -92,52 +92,54 @@ export default class Server {
 		this.socketServer.sockets.in(tag).emit(Events.READY, {
 			tag,
 			nickname
-		}) 
+		})
 	}
 
 	listen() {
 		this.webServer.listen(this.privatePort, () => {
-			console.info(Common.now(), `Listening on *:${this.publicPort} --> *:${this.privatePort}`)
+			Common.logger.info(`Listening on *:${this.publicPort} --> *:${this.privatePort}`)
 		})
 	}
-	
+
 	registerRepositoryEvent(event, socket) {
 		socket.on(event, (message) => {
-			const json = Common.toJson(message)
-			console.info(`${Common.now()} ${event}`, json)			
+			const { from, nickname, email } = Common.json.from(message)
+			Common.logger.info(event, { from, nickname, email })
 			if (event === Events.CONFIGURED) {
-				AgentRepository.update(json.from, json.nickname, json.email)
-				return			
-			}			
+				AgentRepository.update(from, nickname, email)
+				return
+			}
 		})
 	}
-	 
+
 	registerPassThroughEvent(event, socket) {
-		socket.on(event, (message) => {
-			const json = Common.toJson(message)
-			console.info(`${Common.now()} ${event}`, json)
-			if (json.to) {
-				this.socketServer.sockets.in(json.to).emit(event, message)
+		socket.on(event, (socketMessage) => {
+			//const json = Common.json.from(message)		
+			const { message, from, to, nickname, email } = Common.json.from(socketMessage)
+			Common.logger.info(event, { from, nickname, email })
+			if (to) {
+				this.socketServer.sockets.in(to).emit(event, socketMessage)
 				return
 			} else {
 				//Déterminer l'ensemble des user agent visés par ce from
-				const decompressed = Common.toJson(LZString.decompressFromUTF16(json.message))
+				const decompressed = Common.json.from(LZString.decompressFromUTF16(message))
 				if (!decompressed.from) {
-					console.error(`${Common.now()} ${json.from} doit spécifier un destinataire`)	
+					Common.logger.error(`${from} doit spécifier un destinataire`)
 					return
 				}
 				const from = decompressed.from
 				return
 			}
-			console.error(`${Common.now()} ${json.from} doit spécifier un destinataire`)
+			Common.logger.error(`${from} doit spécifier un destinataire`)
 		})
 	}
-	
+
 	registerStorageEvent(event, socket) {
 		socket.on(event, (message) => {
-			const json = Common.toJson(message)
-			console.info(`${Common.now()} ${event}`, json)			
-			this.socketServer.sockets.in(AgentRepository.STORAGE_AGENT_TAG).emit(event, message)			
+			//const json = Common.json.from(message)
+			const { from, nickname, email } = Common.json.from(message)
+			Common.logger.info(event, { from, nickname, email })			
+			this.socketServer.sockets.in(AgentRepository.STORAGE_AGENT_TAG).emit(event, message)
 		})
 	}
 
