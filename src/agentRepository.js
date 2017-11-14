@@ -1,16 +1,13 @@
-import { Lokka } from 'lokka'
-import { Transport } from 'lokka-transport-http'
+import { GraphQLClient } from 'graphql-request'
 import Common from './common'
 
 const STORAGE_AGENT_TAG = 'f1a33ec7-b0a5-4b65-be40-d2a93fd5b133'
 const STREAMING_AGENT_TAG = 'ea0d3ee6-ad65-47f4-9ff0-d25d7a18ed97'
 
-const client = new Lokka({
-	transport: new Transport('https://api.graph.cool/simple/v1/cixri1w220iji0121r8lr0n69')
-})
+const client = new GraphQLClient('https://api.graph.cool/simple/v1/cixri1w220iji0121r8lr0n69');
 
-const findAgentByTag = (tag) => {
-	return client.query(`
+const findAgentByTag = (tag) => {	
+	return client.request(`
   query findAgentByTag($tag: String!) {
     Agent(tag: $tag) { 
       id
@@ -26,13 +23,11 @@ const findAgentByTag = (tag) => {
     User(tag: $tag) {
       id
     }
-  }`, {
-		tag
-	})
+  }`, {	tag	})
 }
 
 const findEndUserByEmailAndAgentTag = (email, tag) => {
-	return client.query(`
+	return client.request(`
   query ($email: String!, $tag: String!) {
     EndUser(email: $email) {
       id
@@ -48,7 +43,7 @@ const findEndUserByEmailAndAgentTag = (email, tag) => {
 }
 
 const createAgent = (tag, nickname, endUserId) => {
-	return client.mutate(`
+	return client.request(`
   {
     newAgent: createAgent(tag: "${tag}", nickname: "${nickname}", endUserId: "${endUserId}") {
       id
@@ -62,7 +57,7 @@ const createAgent = (tag, nickname, endUserId) => {
 }
 
 const updateAgent = (id, nickname) => {
-	return client.mutate(`
+	return client.request(`
   {
    updatedAgent: updateAgent(id: "${id}", nickname: "${nickname}") {
       id
@@ -74,7 +69,7 @@ const updateAgent = (id, nickname) => {
 
 const findByTag = (tag, callback) => {
 	if (!tag) {
-		callback(null, new DiscoverError('undefined tag'))
+		callback(null, new ServerError('Cannot find agent with undefined tag'))
 	}
 	findAgentByTag(tag)
 		.then((data) => {
@@ -121,6 +116,23 @@ const findByTag = (tag, callback) => {
 		})
 }
 
+const findTargetedUsers = (tag, callback) => {
+	if (!tag) {
+		callback(null, new ServerError('Cannot find agent with undefined tag'))
+	}
+	findAgentByTag(tag)
+		.then((data) => {			
+			const targets = data.Agent.endUser.users
+			if (targets) {				
+				callback(targets, null)
+			}
+		})
+		.catch((error) => {
+			console.error(`${Common.now()} La découverte du utilisateurs cible a échoué`, error)
+			callback(null, new ServerError(error.message))
+		})
+}
+
 const update = (tag, nickname, email) => {
 	if (!email) {
 		return
@@ -157,5 +169,6 @@ export default {
 	STORAGE_AGENT_TAG,
 	STREAMING_AGENT_TAG,
 	findByTag,
+	findTargetedUsers,
 	update
 }

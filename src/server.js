@@ -122,8 +122,16 @@ export default class Server {
 			} else {
 				//Déterminer l'ensemble des user agent visés par ce from
 				const decompressed = Common.json.from(LZString.decompressFromUTF16(message))
-				if (!decompressed.from) {
-					Common.logger.error(`${from} doit spécifier un destinataire`)
+				if (decompressed.from) {
+					AgentRepository.findTargetedUsers(decompressed.from, (res, error) => {
+						if (error) {
+							Common.logger.error(error.message)								
+						} else {							
+							res.map(user => {								
+								this.socketServer.sockets.in(user.tag).emit(event, socketMessage)
+							})
+						}
+					})
 					return
 				}				
 				return

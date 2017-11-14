@@ -14,8 +14,7 @@
   "dependencies": {
     "express": "^4.15.0",
     "faker": "^4.1.0",
-    "lokka": "^1.7.0",
-    "lokka-transport-http": "^1.6.1",
+    "graphql-request": "^1.4.0",
     "lz-string": "^1.4.4",
     "node-fetch": "^1.6.3",
     "request": "^2.81.0",
