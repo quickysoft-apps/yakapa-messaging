@@ -69,8 +69,8 @@ export default class Server {
 	}
 
 	registerEvents(socket) {
-		this.registerPassThroughEvent(Events.RESULT_STORED, socket)
-		this.registerStorageEvent(Events.RESULT, socket)
+		this.registerPassThroughEvent(Events.STORED, socket)
+		this.registerStorageEvent(Events.STORE, socket)
 		this.registerRepositoryEvent(Events.CONFIGURED, socket)
 	}
 
@@ -113,8 +113,7 @@ export default class Server {
 	}
 
 	registerPassThroughEvent(event, socket) {
-		socket.on(event, (socketMessage) => {
-			//const json = Common.json.from(message)		
+		socket.on(event, (socketMessage) => {			
 			const { message, from, to, nickname, email } = Common.json.from(socketMessage)
 			Common.logger.info(event, { from, nickname, email })
 			if (to) {
@@ -126,8 +125,7 @@ export default class Server {
 				if (!decompressed.from) {
 					Common.logger.error(`${from} doit spécifier un destinataire`)
 					return
-				}
-				const from = decompressed.from
+				}				
 				return
 			}
 			Common.logger.error(`${from} doit spécifier un destinataire`)
@@ -135,8 +133,7 @@ export default class Server {
 	}
 
 	registerStorageEvent(event, socket) {
-		socket.on(event, (message) => {
-			//const json = Common.json.from(message)
+		socket.on(event, (message) => {			
 			const { from, nickname, email } = Common.json.from(message)
 			Common.logger.info(event, { from, nickname, email })			
 			this.socketServer.sockets.in(AgentRepository.STORAGE_AGENT_TAG).emit(event, message)

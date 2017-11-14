@@ -18,6 +18,9 @@ const findAgentByTag = (tag) => {
       nickname
       endUser {
         email
+				users {
+					tag
+				}
       }
     }
     User(tag: $tag) {
@@ -75,7 +78,7 @@ const findByTag = (tag, callback) => {
 	}
 	findAgentByTag(tag)
 		.then((data) => {
-			let system = null			
+			let system = null
 			if (data.Agent) {
 				system = {
 					nickname: data.Agent.nickname,
