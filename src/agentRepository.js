@@ -1,4 +1,5 @@
 import { GraphQLClient } from 'graphql-request'
+import Errors from './errors'
 import Common from './common'
 
 const STORAGE_AGENT_TAG = 'f1a33ec7-b0a5-4b65-be40-d2a93fd5b133'
@@ -69,7 +70,7 @@ const updateAgent = (id, nickname) => {
 
 const findByTag = (tag, callback) => {
 	if (!tag) {
-		callback(null, new ServerError('Cannot find agent with undefined tag'))
+		callback(null, new Errors.ServerError('Cannot find agent with undefined tag'))
 	}
 	findAgentByTag(tag)
 		.then((data) => {
@@ -107,12 +108,12 @@ const findByTag = (tag, callback) => {
 				callback(system, null)
 			} else {
 				console.warn(Common.now(), `Connection système inconnu ${tag}`)
-				callback(null, new AuthenticationError('Système non authorisé'))
+				callback(null, new Errors.AuthenticationError('Système non authorisé'))
 			}
 		})
 		.catch((error) => {
 			console.error(`${Common.now()} La découverte du système a échoué`, error)
-			callback(null, new ServerError(error.message))
+			callback(null, new Errors.ServerError(error.message))
 		})
 }
 
@@ -129,7 +130,7 @@ const findTargetedUsers = (tag, callback) => {
 		})
 		.catch((error) => {
 			console.error(`${Common.now()} La découverte du utilisateurs cible a échoué`, error)
-			callback(null, new ServerError(error.message))
+			callback(null, new Errors.ServerError(error.message))
 		})
 }
 

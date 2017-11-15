@@ -116,11 +116,12 @@ export default class Server {
 		socket.on(event, (socketMessage) => {			
 			const { message, from, to, nickname, email } = Common.json.from(socketMessage)
 			Common.logger.info(event, { from, nickname, email })
+			//l'agent destinataire est fixé par "to"
 			if (to) {
 				this.socketServer.sockets.in(to).emit(event, socketMessage)
 				return
 			} else {
-				//Déterminer l'ensemble des user agent visés par ce from
+				//plusieurs agents destinataires déduits du "from"
 				const decompressed = Common.json.from(LZString.decompressFromUTF16(message))
 				if (decompressed.from) {
 					AgentRepository.findTargetedUsers(decompressed.from, (res, error) => {
