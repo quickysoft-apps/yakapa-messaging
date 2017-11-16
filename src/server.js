@@ -52,7 +52,7 @@ export default class Server {
 
 			AgentRepository.findByTag(tag, (res, error) => {
 				if (error) {
-					Common.logger.error(error.message)
+					Common.Logger.error(error.message)
 					next(error)
 				} else {
 					socket.yakapa = {
@@ -97,14 +97,14 @@ export default class Server {
 
 	listen() {
 		this.webServer.listen(this.privatePort, () => {
-			Common.logger.info(`Listening on *:${this.publicPort} --> *:${this.privatePort}`)
+			Common.Logger.info(`Listening on *:${this.publicPort} --> *:${this.privatePort}`)
 		})
 	}
 
 	registerRepositoryEvent(event, socket) {
 		socket.on(event, (message) => {
-			const { from, nickname, email } = Common.json.from(message)
-			Common.logger.info(event, { from, nickname, email })
+			const { from, nickname, email } = Common.Json.from(message)
+			Common.Logger.info(event, { from, nickname, email })
 			if (event === Events.CONFIGURED) {
 				AgentRepository.update(from, nickname, email)
 				return
@@ -114,19 +114,19 @@ export default class Server {
 
 	registerPassThroughEvent(event, socket) {
 		socket.on(event, (socketMessage) => {			
-			const { message, from, to, nickname, email } = Common.json.from(socketMessage)
-			Common.logger.info(event, { from, nickname, email })
+			const { message, from, to, nickname, email } = Common.Json.from(socketMessage)
+			Common.Logger.info(event, { from, nickname, email })
 			//l'agent destinataire est fixé par "to"
 			if (to) {
 				this.socketServer.sockets.in(to).emit(event, socketMessage)
 				return
 			} else {
 				//plusieurs agents destinataires déduits du "from"
-				const decompressed = Common.json.from(LZString.decompressFromUTF16(message))
+				const decompressed = Common.Json.from(LZString.decompressFromUTF16(message))
 				if (decompressed.from) {
 					AgentRepository.findTargetedUsers(decompressed.from, (res, error) => {
 						if (error) {
-							Common.logger.error(error.message)								
+							Common.Logger.error(error.message)								
 						} else {							
 							res.map(user => {								
 								this.socketServer.sockets.in(user.tag).emit(event, socketMessage)
@@ -137,14 +137,14 @@ export default class Server {
 				}				
 				return
 			}
-			Common.logger.error(`${from} doit spécifier un destinataire`)
+			Common.Logger.error(`${from} doit spécifier un destinataire`)
 		})
 	}
 
 	registerStorageEvent(event, socket) {
 		socket.on(event, (message) => {			
-			const { from, nickname, email } = Common.json.from(message)
-			Common.logger.info(event, { from, nickname, email })			
+			const { from, nickname, email } = Common.Json.from(message)
+			Common.Logger.info(event, { from, nickname, email })			
 			this.socketServer.sockets.in(AgentRepository.STORAGE_AGENT_TAG).emit(event, message)
 		})
 	}
