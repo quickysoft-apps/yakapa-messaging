@@ -72,6 +72,7 @@ export default class Server {
 		this.registerPassThroughEvent(Events.STORED, socket)
 		this.registerStorageEvent(Events.STORE, socket)
 		this.registerStreamingEvent(Events.STREAM, socket)
+		this.registerStreamingEvent(Events.STREAMED, socket)
 		this.registerRepositoryEvent(Events.CONFIGURED, socket)
 	}
 
@@ -151,10 +152,18 @@ export default class Server {
 	}
 	
 	registerStreamingEvent(event, socket) {
-		socket.on(event, (message) => {			
-			const { from, nickname, email } = Common.Json.from(message)
-			Common.Logger.info(event, { from, nickname, email })			
-			this.socketServer.sockets.in(AgentRepository.STREAMING_AGENT_TAG).emit(event, message)
+		socket.on(event, (socketMessage) => {			
+			const { from, to, nickname, email } = Common.Json.from(socketMessage)			
+			Common.Logger.info(event, { from, nickname, email, to })						
+			switch (event) {				
+				case Events.STREAM:
+					this.socketServer.sockets.in(AgentRepository.STREAMING_AGENT_TAG).emit(event, socketMessage)
+					break					
+				case Events.STREAMED:
+					const decompressed = LZString.decompressFromUTF16(socketMessage.message)					
+					this.socketServer.sockets.in(to).emit(event, socketMessage)
+					break									
+			}					
 		})
 	}
 
