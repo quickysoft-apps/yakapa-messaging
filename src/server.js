@@ -7,7 +7,6 @@ import io from 'socket.io'
 import scn from 'string-capitalize-name'
 import faker from 'faker'
 import * as LZString from 'lz-string'
-import { lock } from 'ki1r0y.lock'
 import * as Common from 'yakapa-common'
 
 import AgentRepository from './agentRepository'
@@ -26,7 +25,6 @@ export default class Server {
 	constructor(secure = true) {
 
 		this._secure = secure
-		this._unlocks = new Map()
 
 		const sslOptions = {
 			key: fs.readFileSync('/home/azemour/yakapa/yakapa-messaging/yakapass.pem'),
@@ -70,7 +68,7 @@ export default class Server {
 
 	}
 
-	registerEvents(socket) {		
+	registerEvents(socket) {
 		this.registerStorageEvent(Events.STORE, socket)
 		this.registerStoredEvent(Events.STORED, socket)
 		this.registerStreamingEvent(Events.STREAM, socket)
@@ -93,10 +91,7 @@ export default class Server {
 		const nickname = knownAgent ? knownAgent.nickname : generatedNickname
 		const host = this._secure ? DEFAULT_SSL_HOST : DEFAULT_HOST
 		socket.join(tag)
-		this.socketServer.sockets.in(tag).emit(Events.READY, {
-			tag,
-			nickname
-		})
+		this.socketServer.sockets.in(tag).emit(Events.READY, { tag, nickname })
 	}
 
 	listen() {
@@ -108,7 +103,7 @@ export default class Server {
 	registerRepositoryEvent(event, socket) {
 		socket.on(event, (message) => {
 			const { from, nickname, email } = Common.Json.from(message)
-			Common.Logger.info(event, { from, nickname, email })
+			Common.Logger.info(event, { from, email })
 			if (event === Events.CONFIGURED) {
 				AgentRepository.update(from, nickname, email)
 				return
@@ -117,68 +112,56 @@ export default class Server {
 	}
 
 	registerPassThroughEvent(event, socket) {
-		socket.on(event, (socketMessage) => {			
-			const { message, from, to, nickname, email } = Common.Json.from(socketMessage)
-			Common.Logger.info(event, { from, nickname, email })
+		socket.on(event, (socketMessage) => {
+			const { message, from, to, nickname, email } = Common.Json.from(socketMessage)			
 			//l'agent destinataire est fixé par "to"
 			if (to) {
+				Common.Logger.info(event, { from, email, to })
 				this.socketServer.sockets.in(to).emit(event, socketMessage)
 				return
 			}
 			Common.Logger.error(`${from} doit spécifier un destinataire`)
 		})
 	}
-	
+
 	registerStoredEvent(event, socket) {
 		socket.on(event, (socketMessage) => {
-			const decompressed = Common.Json.from(LZString.decompressFromUTF16(socketMessage.message))
-			const unlock = this._unlocks.get(decompressed.from)
-			unlock()					
-			this._unlocks.delete(decompressed.from)
+			const decompressed = Common.Json.from(LZString.decompressFromUTF16(socketMessage.message))			
 			if (decompressed.from) {
 				AgentRepository.findTargetedUsers(decompressed.from, (res, error) => {
 					if (error) {
-						Common.Logger.error(error.message)								
-					} else {							
-						res.map(user => {								
+						Common.Logger.error(error.message)
+					} else {
+						res.map(user => {
 							this.socketServer.sockets.in(user.tag).emit(event, socketMessage)
 						})
 					}
-				})		
-			}			
-		})	
+				})
+			}
+		})
 	}
-	
-	registerStorageEvent(event, socket) {		
+
+	registerStorageEvent(event, socket) {
 		socket.on(event, (message) => {
 			const { from, nickname, email } = Common.Json.from(message)
-			Common.Logger.info(event, { from, nickname, email })				
-			
-			/*if (this._unlocks.has(from)) {
-				return
-			}*/
-			
-			lock(from, (unlock) => {
-				this._unlocks.set(from, unlock)
-				this.socketServer.sockets.in(AgentRepository.STORAGE_AGENT_TAG).emit(event, message)
-			})
+			Common.Logger.info(event, { from, email })
+			this.socketServer.sockets.in(AgentRepository.STORAGE_AGENT_TAG).emit(event, message)
 		})
-		
 	}
-	
+
 	registerStreamingEvent(event, socket) {
-		socket.on(event, (socketMessage) => {			
-			const { from, to, nickname, email } = Common.Json.from(socketMessage)			
-			Common.Logger.info(event, { from, nickname, email, to })						
-			switch (event) {				
+		socket.on(event, (socketMessage) => {
+			const { from, to, nickname, email } = Common.Json.from(socketMessage)
+			Common.Logger.info(event, { from, email, to })
+			switch (event) {
 				case Events.STREAM:
 					this.socketServer.sockets.in(AgentRepository.STREAMING_AGENT_TAG).emit(event, socketMessage)
-					break					
+					break
 				case Events.STREAMED:
-					const decompressed = LZString.decompressFromUTF16(socketMessage.message)					
+					const decompressed = LZString.decompressFromUTF16(socketMessage.message)
 					this.socketServer.sockets.in(to).emit(event, socketMessage)
-					break									
-			}					
+					break
+			}
 		})
 	}
 
