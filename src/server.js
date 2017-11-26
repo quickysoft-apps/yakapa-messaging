@@ -7,6 +7,7 @@ import io from 'socket.io'
 import scn from 'string-capitalize-name'
 import faker from 'faker'
 import * as LZString from 'lz-string'
+import { lock } from 'ki1r0y.lock'
 import * as Common from 'yakapa-common'
 
 import AgentRepository from './agentRepository'
@@ -25,6 +26,7 @@ export default class Server {
 	constructor(secure = true) {
 
 		this._secure = secure
+		this._unlocks = new Map()
 
 		const sslOptions = {
 			key: fs.readFileSync('/home/azemour/yakapa/yakapa-messaging/yakapass.pem'),
@@ -68,9 +70,9 @@ export default class Server {
 
 	}
 
-	registerEvents(socket) {
-		this.registerPassThroughEvent(Events.STORED, socket)
+	registerEvents(socket) {		
 		this.registerStorageEvent(Events.STORE, socket)
+		this.registerStoredEvent(Events.STORED, socket)
 		this.registerStreamingEvent(Events.STREAM, socket)
 		this.registerStreamingEvent(Events.STREAMED, socket)
 		this.registerRepositoryEvent(Events.CONFIGURED, socket)
@@ -122,33 +124,46 @@ export default class Server {
 			if (to) {
 				this.socketServer.sockets.in(to).emit(event, socketMessage)
 				return
-			} else {
-				//plusieurs agents destinataires déduits du "from"
-				const decompressed = Common.Json.from(LZString.decompressFromUTF16(message))
-				if (decompressed.from) {
-					AgentRepository.findTargetedUsers(decompressed.from, (res, error) => {
-						if (error) {
-							Common.Logger.error(error.message)								
-						} else {							
-							res.map(user => {								
-								this.socketServer.sockets.in(user.tag).emit(event, socketMessage)
-							})
-						}
-					})
-					return
-				}				
-				return
 			}
 			Common.Logger.error(`${from} doit spécifier un destinataire`)
 		})
 	}
-
-	registerStorageEvent(event, socket) {
-		socket.on(event, (message) => {			
+	
+	registerStoredEvent(event, socket) {
+		socket.on(event, (socketMessage) => {
+			const decompressed = Common.Json.from(LZString.decompressFromUTF16(socketMessage.message))
+			const unlock = this._unlocks.get(decompressed.from)
+			unlock()					
+			this._unlocks.delete(decompressed.from)
+			if (decompressed.from) {
+				AgentRepository.findTargetedUsers(decompressed.from, (res, error) => {
+					if (error) {
+						Common.Logger.error(error.message)								
+					} else {							
+						res.map(user => {								
+							this.socketServer.sockets.in(user.tag).emit(event, socketMessage)
+						})
+					}
+				})		
+			}			
+		})	
+	}
+	
+	registerStorageEvent(event, socket) {		
+		socket.on(event, (message) => {
 			const { from, nickname, email } = Common.Json.from(message)
-			Common.Logger.info(event, { from, nickname, email })			
-			this.socketServer.sockets.in(AgentRepository.STORAGE_AGENT_TAG).emit(event, message)
+			Common.Logger.info(event, { from, nickname, email })				
+			
+			/*if (this._unlocks.has(from)) {
+				return
+			}*/
+			
+			lock(from, (unlock) => {
+				this._unlocks.set(from, unlock)
+				this.socketServer.sockets.in(AgentRepository.STORAGE_AGENT_TAG).emit(event, message)
+			})
 		})
+		
 	}
 	
 	registerStreamingEvent(event, socket) {
