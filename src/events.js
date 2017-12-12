@@ -5,6 +5,8 @@ const CONFIGURED = `${EVENT_PREFIX}/configured`
 const STORED = `${EVENT_PREFIX}/stored`
 const STREAM = `${EVENT_PREFIX}/stream`
 const STREAMED = `${EVENT_PREFIX}/streamed`
+const AGENT_DISCONNECTED = `${EVENT_PREFIX}/agentDisconnected`
+const AGENT_CONNECTED = `${EVENT_PREFIX}/agentConnected`
 
 export default {
   STORE,
@@ -12,5 +14,7 @@ export default {
   STREAM,
   STREAMED,
   READY,
-  CONFIGURED
+  CONFIGURED,
+  AGENT_DISCONNECTED,
+  AGENT_CONNECTED
 }

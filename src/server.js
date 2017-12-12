@@ -73,7 +73,8 @@ export default class Server {
 		this.registerStoredEvent(Events.STORED, socket)
 		this.registerStreamingEvent(Events.STREAM, socket)
 		this.registerStreamingEvent(Events.STREAMED, socket)
-		this.registerRepositoryEvent(Events.CONFIGURED, socket)
+    this.registerRepositoryEvent(Events.CONFIGURED, socket)
+    this.registerClientSocketEvent('disconnect', socket)
 	}
 
 	setReady(socket) {
@@ -91,7 +92,16 @@ export default class Server {
 		const nickname = knownAgent ? knownAgent.nickname : generatedNickname
 		const host = this._secure ? DEFAULT_SSL_HOST : DEFAULT_HOST
 		socket.join(tag)
-		this.socketServer.sockets.in(tag).emit(Events.READY, { tag, nickname })
+    this.socketServer.sockets.in(tag).emit(Events.READY, { tag, nickname })
+    AgentRepository.findTargetedUsers(tag, (res, error) => {
+      if (error) {
+        Common.Logger.error(error.message)
+      } else {
+        res.map(user => {
+          this.socketServer.sockets.in(user.tag).emit(Events.AGENT_CONNECTED, tag)
+        })
+      }
+    })      
 	}
 
 	listen() {
@@ -121,6 +131,22 @@ export default class Server {
 				return
 			}
 			Common.Logger.error(`${from} doit spécifier un destinataire`)
+		})
+  }
+  
+	registerClientSocketEvent(event, socket) {
+		socket.on(event, (socketMessage) => {			      
+      const tag = socket.yakapa.data.authenticatingTag      
+      Common.Logger.warn(`${tag} est déconnecté`)      
+      AgentRepository.findTargetedUsers(tag, (res, error) => {
+        if (error) {
+          Common.Logger.error(error.message)
+        } else {
+          res.map(user => {
+            this.socketServer.sockets.in(user.tag).emit(Events.AGENT_DISCONNECTED, tag)
+          })
+        }
+      })      
 		})
 	}
 

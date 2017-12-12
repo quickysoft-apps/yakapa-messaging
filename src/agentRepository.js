@@ -122,8 +122,8 @@ const findTargetedUsers = (tag, callback) => {
 		callback(null, new ServerError('Cannot find agent with undefined tag'))
 	}
 	findAgentByTag(tag)
-		.then((data) => {			
-			const targets = data.Agent.endUser.users
+		.then((data) => {			      
+			const targets = data.Agent ? data.Agent.endUser.users : []
 			if (targets) {				
 				callback(targets, null)
 			}
